@@ -93,11 +93,11 @@ program.command('claim')
             
             const signer = session.account.getSigner(421613)
 
-            const erc721Interface = new ethers.utils.Interface([
+            const demoCoinInterface = new ethers.utils.Interface([
                 'function mint()'
             ])
                 
-            const data = erc721Interface.encodeFunctionData(
+            const data = demoCoinInterface.encodeFunctionData(
                 'mint', []
             )
                 
@@ -182,11 +182,11 @@ program.command('send')
             
             const signer = session.account.getSigner(421613)
 
-            const erc721Interface = new ethers.utils.Interface([
+            const erc20Interface = new ethers.utils.Interface([
                 'function transfer(address to, uint256 value) public returns (bool)'
             ])
                 
-            const data = erc721Interface.encodeFunctionData(
+            const data = erc20Interface.encodeFunctionData(
                 'transfer', [address, amount]
             )
                 
