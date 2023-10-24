@@ -16,6 +16,11 @@ import { ethers } from 'ethers';
 
 const program = new Command();
 
+import { SequenceIndexerClient } from '@0xsequence/indexer'
+
+const indexer = new SequenceIndexerClient('https://arbitrum-goerli-indexer.sequence.app')
+const contractAddress = '0x86677e53c78dd0d32aa955c3312212a2d2ea83fb'
+
 async function generateOrLoadPrivateKey() {
     const envFilePath = path.join(__dirname, '.env');
 
@@ -58,30 +63,13 @@ program.command('wallet')
 
             // Open a Sequence session, this will find or create
             // a Sequence wallet controlled by your server EOA
-            
-            // this doesn't work
             const session = await Session.singleSigner({
                 signer: walletEOA,
-                // OPTIONAL: Multiple wallets could be found for the same EOA
-                // to enforce a specific wallet you can use the following callback
             })
             
-            // const signer = session.account.getSigner(421613, {
-            //     // OPTIONAL: You can also enforce a specific way to pay for gas fees
-            //     // if not provided the sdk will select one for you
-            //     selectFee: async (
-            //         _txs: any,
-            //         options: any[]
-            //     ) => {
-            //         console.log(options)
-            //         const found = options.find(option => option.token.symbol === 'MATIC')
-            //         if (!found) throw Error('fee option not found')
-            //         return found
-            //     }
-            // })
-            
-            // console.log(signer.account.address)
-            // console.log(chalk.blue(`Your wallet address: ${signer.account.address}`))
+            const signer = session.account.getSigner(421613)
+
+            console.log(chalk.blue(`Your wallet address: ${signer.account.address}`))
         }).catch(error => {
             console.error(`Failed to generate or load private key: ${error}`);
         });
@@ -91,58 +79,133 @@ program.command('claim')
     .description('claim some $DEMO token from the faucet')
     .action(async (str: any, options: any) => {
 
-        const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
-        const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+        generateOrLoadPrivateKey().then(async (privateKey) => {
+            const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
+            const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
-        const erc721Interface = new ethers.utils.Interface([
-            'function mint()'
-        ])
+            // Create your server EOA
+            const walletEOA = new ethers.Wallet(privateKey, provider);
+
+            // Open a Sequence session, this will find or create
+            // a Sequence wallet controlled by your server EOA
+            const session = await Session.singleSigner({
+                signer: walletEOA,
+            })
             
-        const data = erc721Interface.encodeFunctionData(
-            'mint', []
-        )
-            
-        const txn = {
-            to: "0x4035c18d55a8e78638dF0E7240cD347BfE9F4c1A",
-            data
-        }
-        
-        // console.log(signer.options.selectFee(txn, []))
-        const gasEstimate = await provider.estimateGas(txn);
-        
-        const answers = await inquirer.prompt([
-            {
-                type: 'input',
-                name: 'userInput',
-                message: chalk.greenBright(`Your tx will cost ~${gasEstimate.toString()} gas, would you like to proceed y/n`),
+            const signer = session.account.getSigner(421613)
+
+            const erc721Interface = new ethers.utils.Interface([
+                'function mint()'
+            ])
+                
+            const data = erc721Interface.encodeFunctionData(
+                'mint', []
+            )
+                
+            const txn = {
+                to: contractAddress,
+                data
             }
-        ]);
 
-        // After getting user input, continue with the function
-        if(answers.userInput == 'y'){
-            console.log(`Transaction ID: ${null}`)
-        } else {
-            console.log(chalk.red(`User denied tx.`))
-        }
+            let gasEstimate = 0; // todo: gas estimate on txn
+
+            const answers = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'userInput',
+                    message: chalk.greenBright(`Your tx will cost ~${gasEstimate.toString()} gas, would you like to proceed y/n`),
+                }
+            ]);
+    
+            // After getting user input, continue with the function
+            if(answers.userInput == 'y'){
+                const res = await signer.sendTransaction(txn)
+                console.log(`Transaction ID: ${res.hash}`)
+                const receipt = await provider.getTransactionReceipt(res.hash);
+                console.log(chalk.blackBright(`gas used: ${receipt.gasUsed.toString()}`));
+                console.log(chalk.cyan(`8 $DEMO coin was transferred to ${signer.account.address}`))
+            } else {
+                console.log(chalk.red(`User denied tx.`))
+            }
+        })
+    });
+
+program.command('balance')
+    .description('get the user balance of $DEMO coin')
+    .action(async () => {
+        generateOrLoadPrivateKey().then(async (privateKey) => {
+            const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
+            const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+
+            // Create your server EOA
+            const walletEOA = new ethers.Wallet(privateKey, provider);
+
+            // Open a Sequence session, this will find or create
+            // a Sequence wallet controlled by your server EOA
+            const session = await Session.singleSigner({
+                signer: walletEOA,
+            })
+            
+            const signer = session.account.getSigner(421613)
+            const accountAddress = signer.account.address
+
+            const balance = await indexer.getTokenBalances({
+                contractAddress: contractAddress,
+                accountAddress: accountAddress,
+                includeMetadata: true
+            })
+
+            balance.balances.map((token: any) => {
+                if(token.contractAddress == contractAddress){
+                    console.log(chalk.cyan(`$DEMO balance: ${token.balance}`))
+                }
+            })
+        })
     });
 
 program.command('send')
     .description('send a certain number of tokens to a friends address')
     .argument('<amount>', 'amount to send')
     .argument('<address>', 'wallet address to send to')
-    // .option('--first', 'display just the first substring')
-    // .option('-s, --separator <char>', 'separator character', ',')
     .action((amount, address, options) => {
-        console.log(amount)
-        console.log(address)
-        // const limit = options.first ? 1 : undefined;
-        // console.log(str.split(options.separator, limit));
-        console.log(`Transaction ID: ${null}`)
-});
-  
-program.parse();
+        generateOrLoadPrivateKey().then(async (privateKey) => {
+            const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
+            const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
-function myFunction(input: any) {
-    console.log(`You entered: ${input}`);
-    // Your function logic here
-}
+            // Create your server EOA
+            const walletEOA = new ethers.Wallet(privateKey, provider);
+
+            // Open a Sequence session, this will find or create
+            // a Sequence wallet controlled by your server EOA
+            const session = await Session.singleSigner({
+                signer: walletEOA,
+            })
+            
+            const signer = session.account.getSigner(421613)
+
+            const erc721Interface = new ethers.utils.Interface([
+                'function transfer(address to, uint256 value) public returns (bool)'
+            ])
+                
+            const data = erc721Interface.encodeFunctionData(
+                'transfer', [address, amount]
+            )
+                
+            const txn = {
+                to: contractAddress,
+                data
+            }
+
+            try {
+                const res = await signer.sendTransaction(txn)
+                console.log(`Transaction ID: ${res.hash}`)
+            } catch(err) {
+                console.log(`Something went wrong, check your inputs`)
+                console.log(err)
+            }
+        }).catch(error => {
+            console.error(`Failed to generate or load private key: ${error}`);
+        });
+});
+
+program.parse();

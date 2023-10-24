@@ -1,20 +1,18 @@
 # relayer-cli
+a simple and slightly colorful CLI demo for interacting with the sequence relayer in order to mint tokens, check balance, & send to friends.
 
-# functions
+## how to use
 ```
-$ ./sequence-demo.ts
+$ pnpm run sequence:demo wallet
+Your wallet address: <address>
 
-var mastHead = "\n _____                             \n|   __|___ ___ _ _ ___ ___ ___ ___ \n|__   | -_| . | | | -_|   |  _| -_|\n|_____|___|_  |___|___|_|_|___|___|\n            |_|\n            \n  Release: v".concat("\n\n");
+$ pnpm run sequence:demo claim
+...
 
-1. wallet
-2. claim
-3. send
+$ pnpm run sequence:demo balance
+$DEMO balance: 32
 
-$ ./sequence-demo.ts wallet
-$ ./sequence-demo.ts claim
-green: your tx will cost ~XX gas, would you like to proceed y/n: y
-yellow: minted xx tokens, costing XX gas
-red: operation aborted
-
-$ ./sequence-demo.ts send <amount> to <address>
+$ pnpm run sequence:demo send 8 <address>
+...
 ```
+

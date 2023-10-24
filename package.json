@@ -2,6 +2,9 @@
   "name": "relayer-cli",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "sequence:demo": "pnpm i && pnpm tsc && node sequence-demo-relayer.js"
+  },
   "devDependencies": {
     "@types/fs-extra": "^11.0.3",
     "@types/inquirer": "^9.0.6",
@@ -12,6 +15,7 @@
   },
   "dependencies": {
     "@0xsequence/auth": "^1.2.8",
+    "@0xsequence/indexer": "^1.2.8",
     "@openzeppelin/contracts": "^5.0.0",
     "chalk": "4.1.2",
     "commander": "^11.1.0",
