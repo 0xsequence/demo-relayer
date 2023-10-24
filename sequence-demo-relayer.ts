@@ -78,7 +78,6 @@ program.command('wallet')
 program.command('claim')
     .description('claim some $DEMO token from the faucet')
     .action(async (str: any, options: any) => {
-
         generateOrLoadPrivateKey().then(async (privateKey) => {
             const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
             const provider = new ethers.providers.JsonRpcProvider(providerUrl);

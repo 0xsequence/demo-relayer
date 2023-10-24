@@ -1,5 +1,5 @@
 # relayer-cli
-a simple and slightly colorful CLI demo for interacting with the sequence relayer in order to mint tokens, check balance, & send to friends.
+a simple and slightly colorful CLI demo for interacting with the sequence relayer in order to mint tokens, check balance, & send coin to friends.
 
 ## how to use
 ```
