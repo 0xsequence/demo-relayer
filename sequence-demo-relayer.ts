@@ -9,7 +9,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 import { Session, SessionSettingsDefault } from '@0xsequence/auth'
-import { RpcRelayer, FeeQuote } from '@0xsequence/relayer'
 import { ChainId } from '@0xsequence/network'
 import { Command } from 'commander'
 import inquirer from 'inquirer';
@@ -106,38 +105,35 @@ program.command('claim')
                 }
             })
             
-            const signer = session.account.getSigner(CHAIN_ID)
-                
-            //     {
-            //     // OPTIONAL: You can also enforce a specific way to pay for gas fees
-            //     // if not provided the sdk will select one for you
-            //     selectFee: async (
-            //       _txs: any,
-            //       options: any[]
-            //     ) => {
-            //         // RpcRelayerProto.
-            //       // Find the option to pay with native tokens
-            //       const found = options[0]
+            const signer = session.account.getSigner(CHAIN_ID,
+                {
+                // OPTIONAL: You can also enforce a specific way to pay for gas fees
+                // if not provided the sdk will select one for you
+                selectFee: async (
+                  _txs: any,
+                  options: any[]
+                ) => {
 
-            //       console.log(found.value)
+                  // Find the option to pay with native tokens
+                  const found = options[0]
 
-            //       const answers = await inquirer.prompt([
-            //         {
-            //                 type: 'input',
-            //                 name: 'userInput',
-            //                 message: chalk.greenBright(`Your tx will cost ~${(found.value).toString()} in wei, would you like to proceed y/n`),
-            //             }
-            //         ]);
+                  const answers = await inquirer.prompt([
+                    {
+                            type: 'input',
+                            name: 'userInput',
+                            message: chalk.greenBright(`Your tx will cost ~${(found.value).toString()} in wei, would you like to proceed y/n`),
+                        }
+                    ]);
             
-            //         // After getting user input, continue with the function
-            //         if(answers.userInput == 'y'){
-            //             return found
-            //         } else {
-            //             console.log(chalk.red(`User denied tx.`))
-            //             throw Error('User denied transaction')
-            //         }
-            //     }
-            //   })
+                    // After getting user input, continue with the function
+                    if(answers.userInput == 'y'){
+                        return undefined
+                    } else {
+                        console.log(chalk.red(`User denied tx.`))
+                        throw Error('User denied transaction')
+                    }
+                }
+              })
 
             const demoCoinInterface = new ethers.utils.Interface([
                 'function mint()'
