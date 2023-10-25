@@ -14,6 +14,7 @@ import { Command } from 'commander'
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { ethers } from 'ethers';
+import axios from 'axios'
 
 const program = new Command();
 
@@ -102,14 +103,20 @@ program.command('claim')
                   options: any[]
                 ) => {
 
-                  // Find the option to pay with native tokens
-                  const found = options[0]
+                    // Find the option to pay with native tokens
+                    const found = options[0]
+                    const gwei = found.value / 1e9;
+                    const ethPriceResponse = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+                    const ethPriceInUSD = ethPriceResponse.data.ethereum.usd;
 
-                  const answers = await inquirer.prompt([
-                    {
+                    // Convert gas price from Gwei to USD
+                    const gasPriceInUSD = gwei * ethPriceInUSD / 1e9; // divide by 1e9 to convert Gwei to ETH
+
+                    const answers = await inquirer.prompt([
+                        {
                             type: 'input',
                             name: 'userInput',
-                            message: chalk.greenBright(`Your tx will cost ~${(found.value).toString()} in wei, would you like to proceed y/n`),
+                            message: chalk.greenBright(`Your tx will cost ~${(gwei.toFixed(2)).toString()} in gwei ($${gasPriceInUSD.toFixed(2)} USD), would you like to proceed y/n`),
                         }
                     ]);
             
@@ -138,6 +145,7 @@ program.command('claim')
 
             const res = await signer.sendTransaction(txn, {simulateForFeeOptions: true})
             console.log(`Transaction ID: ${res.hash}`)
+            console.log(`URL of Tx: https://goerli.arbiscan.io/tx/${res.hash}`)
             const receipt = await provider.getTransactionReceipt(res.hash);
             console.log(chalk.blackBright(`gas used: ${receipt.gasUsed.toString()}`));
             console.log(chalk.cyan(`8 $DEMO coin was transferred to ${signer.account.address}`))
@@ -215,6 +223,7 @@ program.command('send')
             try {
                 const res = await signer.sendTransaction(txn)
                 console.log(`Transaction ID: ${res.hash}`)
+                console.log(`URL of Tx: https://goerli.arbiscan.io/tx/${res.hash}`)
             } catch(err) {
                 console.log(`Something went wrong, check your inputs`)
                 console.log(err)
