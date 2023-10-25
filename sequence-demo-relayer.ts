@@ -90,19 +90,7 @@ program.command('claim')
             // Open a Sequence session, this will find or create
             // a Sequence wallet controlled by your server EOA
             const session = await Session.singleSigner({
-                signer: walletEOA,
-                settings: {
-                    networks: [...SessionSettingsDefault.networks.map(network => {
-                        if (network.chainId === CHAIN_ID) {
-                          return {
-                            ...network,
-                            relayer: { provider: {url: 'https://dev2-arbitrum-goerli-relayer.sequence.app'}, url: 'https://dev2-arbitrum-goerli-relayer.sequence.app' }
-                          }
-                        } else {
-                          return network
-                        }
-                      })]
-                }
+                signer: walletEOA
             })
             
             const signer = session.account.getSigner(CHAIN_ID,

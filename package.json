@@ -14,10 +14,10 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@0xsequence/auth": "0.0.0-20231025151856",
-    "@0xsequence/indexer": "0.0.0-20231025151856",
-    "@0xsequence/network": "0.0.0-20231025151856",
-    "@0xsequence/relayer": "0.0.0-20231025151856",
+    "@0xsequence/auth": "^1.2.9",
+    "@0xsequence/indexer": "^1.2.9",
+    "@0xsequence/network": "^1.2.9",
+    "@0xsequence/relayer": "^1.2.9",
     "@openzeppelin/contracts": "^5.0.0",
     "chalk": "4.1.2",
     "commander": "^11.1.0",
