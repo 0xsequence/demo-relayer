@@ -8,7 +8,9 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-import { Session } from '@0xsequence/auth'
+import { Session, SessionSettingsDefault } from '@0xsequence/auth'
+import { RpcRelayer, FeeQuote } from '@0xsequence/relayer'
+import { ChainId } from '@0xsequence/network'
 import { Command } from 'commander'
 import inquirer from 'inquirer';
 import chalk from 'chalk';
@@ -20,6 +22,7 @@ import { SequenceIndexerClient } from '@0xsequence/indexer'
 
 const indexer = new SequenceIndexerClient('https://arbitrum-goerli-indexer.sequence.app')
 const contractAddress = '0x86677e53c78dd0d32aa955c3312212a2d2ea83fb'
+const CHAIN_ID = ChainId.ARBITRUM_GOERLI
 
 async function generateOrLoadPrivateKey() {
     const envFilePath = path.join(__dirname, '.env');
@@ -67,7 +70,7 @@ program.command('wallet')
                 signer: walletEOA,
             })
             
-            const signer = session.account.getSigner(421613)
+            const signer = session.account.getSigner(CHAIN_ID)
 
             console.log(chalk.blue(`Your wallet address: ${signer.account.address}`))
         }).catch(error => {
@@ -89,9 +92,52 @@ program.command('claim')
             // a Sequence wallet controlled by your server EOA
             const session = await Session.singleSigner({
                 signer: walletEOA,
+                settings: {
+                    networks: [...SessionSettingsDefault.networks.map(network => {
+                        if (network.chainId === CHAIN_ID) {
+                          return {
+                            ...network,
+                            relayer: { provider: {url: 'https://dev2-arbitrum-goerli-relayer.sequence.app'}, url: 'https://dev2-arbitrum-goerli-relayer.sequence.app' }
+                          }
+                        } else {
+                          return network
+                        }
+                      })]
+                }
             })
             
-            const signer = session.account.getSigner(421613)
+            const signer = session.account.getSigner(CHAIN_ID)
+                
+            //     {
+            //     // OPTIONAL: You can also enforce a specific way to pay for gas fees
+            //     // if not provided the sdk will select one for you
+            //     selectFee: async (
+            //       _txs: any,
+            //       options: any[]
+            //     ) => {
+            //         // RpcRelayerProto.
+            //       // Find the option to pay with native tokens
+            //       const found = options[0]
+
+            //       console.log(found.value)
+
+            //       const answers = await inquirer.prompt([
+            //         {
+            //                 type: 'input',
+            //                 name: 'userInput',
+            //                 message: chalk.greenBright(`Your tx will cost ~${(found.value).toString()} in wei, would you like to proceed y/n`),
+            //             }
+            //         ]);
+            
+            //         // After getting user input, continue with the function
+            //         if(answers.userInput == 'y'){
+            //             return found
+            //         } else {
+            //             console.log(chalk.red(`User denied tx.`))
+            //             throw Error('User denied transaction')
+            //         }
+            //     }
+            //   })
 
             const demoCoinInterface = new ethers.utils.Interface([
                 'function mint()'
@@ -106,27 +152,14 @@ program.command('claim')
                 data
             }
 
-            let gasEstimate = 0; // todo: gas estimate on txn
-
-            const answers = await inquirer.prompt([
-                {
-                    type: 'input',
-                    name: 'userInput',
-                    message: chalk.greenBright(`Your tx will cost ~${gasEstimate.toString()} gas, would you like to proceed y/n`),
-                }
-            ]);
-    
-            // After getting user input, continue with the function
-            if(answers.userInput == 'y'){
-                const res = await signer.sendTransaction(txn)
-                console.log(`Transaction ID: ${res.hash}`)
-                const receipt = await provider.getTransactionReceipt(res.hash);
-                console.log(chalk.blackBright(`gas used: ${receipt.gasUsed.toString()}`));
-                console.log(chalk.cyan(`8 $DEMO coin was transferred to ${signer.account.address}`))
-            } else {
-                console.log(chalk.red(`User denied tx.`))
-            }
-        })
+            const res = await signer.sendTransaction(txn, {simulateForFeeOptions: true})
+            console.log(`Transaction ID: ${res.hash}`)
+            const receipt = await provider.getTransactionReceipt(res.hash);
+            console.log(chalk.blackBright(`gas used: ${receipt.gasUsed.toString()}`));
+            console.log(chalk.cyan(`8 $DEMO coin was transferred to ${signer.account.address}`))
+        }).catch(error => {
+            console.error(error);
+        });
     });
 
 program.command('balance')
@@ -145,7 +178,7 @@ program.command('balance')
                 signer: walletEOA,
             })
             
-            const signer = session.account.getSigner(421613)
+            const signer = session.account.getSigner(CHAIN_ID)
             const accountAddress = signer.account.address
 
             const balance = await indexer.getTokenBalances({
@@ -180,7 +213,7 @@ program.command('send')
                 signer: walletEOA,
             })
             
-            const signer = session.account.getSigner(421613)
+            const signer = session.account.getSigner(CHAIN_ID   )
 
             const erc20Interface = new ethers.utils.Interface([
                 'function transfer(address to, uint256 value) public returns (bool)'
