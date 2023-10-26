@@ -13,16 +13,19 @@ import { ChainId } from '@0xsequence/network'
 import { Command } from 'commander'
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import axios from 'axios'
 
 const program = new Command();
 
 import { SequenceIndexerClient } from '@0xsequence/indexer'
 
-const indexer = new SequenceIndexerClient('https://arbitrum-goerli-indexer.sequence.app')
-const contractAddress = '0x86677e53c78dd0d32aa955c3312212a2d2ea83fb'
-const CHAIN_ID = ChainId.ARBITRUM_GOERLI
+const indexer = new SequenceIndexerClient('https://polygon-indexer.sequence.app')
+const contractAddress = '0x4574ca5b8b16d8e36d26c7e3dbeffe81f6f031f7'
+const providerUrl = 'https://nodes.sequence.app/polygon';
+const scanner = 'https://polygonscan.com'
+const CHAIN_ID = ChainId.POLYGON
+const API_KEY = 'bec3622f-3f4a-4f49-8f62-1bb0e16d0da6';  // Replace with your API key, sh
 
 async function generateOrLoadPrivateKey() {
     const envFilePath = path.join(__dirname, '.env');
@@ -49,6 +52,26 @@ async function generateOrLoadPrivateKey() {
     return privateKey;
 }
 
+async function fetchMaticPriceCoinMarketCap() {
+    const headers = {
+        'X-CMC_PRO_API_KEY': API_KEY,
+        'Accept': 'application/json'
+    };
+
+    try {
+        const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest', { headers: headers });
+        const matic = response.data.data.find((coin: any) => coin.symbol === 'MATIC');
+
+        if (matic) {
+            return matic.quote.USD.price;
+        } else {
+            console.log("Matic (Polygon) not found in response");
+        }
+    } catch (error) {
+        console.error("Error fetching Matic (Polygon) price from CoinMarketCap:", error);
+    }
+}
+
 program
     .name('sequence-demo-relayer')
     .description(chalk.blue('CLI to claim and send ERC20 tokens called $DEMO.\n\n _____                             \n|   __|___ ___ _ _ ___ ___ ___ ___ \n|__   | -_| . | | | -_|   |  _| -_|\n|_____|___|_  |___|___|_|_|___|___|\n            |_|\n '))
@@ -58,7 +81,6 @@ program.command('wallet')
     .description('generate a wallet, if not created locally and print wallet address')
     .action((str: any, options: any) => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
-            const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
             const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
             // Create your server EOA
@@ -82,7 +104,6 @@ program.command('claim')
     .description('claim some $DEMO token from the faucet')
     .action(async (str: any, options: any) => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
-            const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
             const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
             // Create your server EOA
@@ -106,17 +127,16 @@ program.command('claim')
                     // Find the option to pay with native tokens
                     const found = options[0]
                     const gwei = found.value / 1e9;
-                    const ethPriceResponse = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-                    const ethPriceInUSD = ethPriceResponse.data.ethereum.usd;
-
+                    const polygonPriceInUSD = await fetchMaticPriceCoinMarketCap()
+                    
                     // Convert gas price from Gwei to USD
-                    const gasPriceInUSD = gwei * ethPriceInUSD / 1e9; // divide by 1e9 to convert Gwei to ETH
+                    const gasPriceInUSD = gwei * polygonPriceInUSD / 1e9; // divide by 1e9 to convert Gwei to ETH
 
                     const answers = await inquirer.prompt([
                         {
                             type: 'input',
                             name: 'userInput',
-                            message: chalk.greenBright(`Your tx will cost ~${(gwei.toFixed(2)).toString()} in gwei ($${gasPriceInUSD.toFixed(2)} USD), would you like to proceed y/n`),
+                            message: chalk.greenBright(`Your tx will cost ~${(gwei.toFixed(2)).toString()} in gwei ($${gasPriceInUSD.toFixed(8)} USD), would you like to proceed y/n`),
                         }
                     ]);
             
@@ -145,9 +165,17 @@ program.command('claim')
 
             const res = await signer.sendTransaction(txn, {simulateForFeeOptions: true})
             console.log(`Transaction ID: ${res.hash}`)
-            console.log(`URL of Tx: https://goerli.arbiscan.io/tx/${res.hash}`)
+            console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
+            const tx = await provider.getTransaction(res.hash);
             const receipt = await provider.getTransactionReceipt(res.hash);
-            console.log(chalk.blackBright(`gas used: ${receipt.gasUsed.toString()}`));
+            const gasPrice = tx.gasPrice!;
+
+            const polygonPriceInUSD = await fetchMaticPriceCoinMarketCap()
+                    
+            const totalCostInWei = receipt.gasUsed;
+            const gasPriceInUSD = Number(totalCostInWei) * polygonPriceInUSD / 1e9;
+            
+            console.log(chalk.blackBright(`gas used: ${totalCostInWei} wei ($${gasPriceInUSD.toFixed(8)} USD)`));
             console.log(chalk.cyan(`8 $DEMO coin was transferred to ${signer.account.address}`))
         }).catch(error => {
             console.error(error);
@@ -158,7 +186,6 @@ program.command('balance')
     .description('get the user balance of $DEMO coin')
     .action(async () => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
-            const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
             const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
             // Create your server EOA
@@ -193,7 +220,6 @@ program.command('send')
     .argument('<address>', 'wallet address to send to')
     .action((amount, address, options) => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
-            const providerUrl = 'https://nodes.sequence.app/arbitrum-goerli';
             const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
             // Create your server EOA
@@ -223,7 +249,7 @@ program.command('send')
             try {
                 const res = await signer.sendTransaction(txn)
                 console.log(`Transaction ID: ${res.hash}`)
-                console.log(`URL of Tx: https://goerli.arbiscan.io/tx/${res.hash}`)
+                console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
             } catch(err) {
                 console.log(`Something went wrong, check your inputs`)
                 console.log(err)
