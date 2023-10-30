@@ -52,7 +52,7 @@ async function generateOrLoadPrivateKey() {
     return privateKey;
 }
 
-async function fetchMaticPriceCoinMarketCap() {
+async function fetchPriceCoinMarketCap(currency: string) {
     const headers = {
         'X-CMC_PRO_API_KEY': API_KEY,
         'Accept': 'application/json'
@@ -60,15 +60,15 @@ async function fetchMaticPriceCoinMarketCap() {
 
     try {
         const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest', { headers: headers });
-        const matic = response.data.data.find((coin: any) => coin.symbol === 'MATIC');
+        const token = response.data.data.find((coin: any) => coin.symbol === currency);
 
-        if (matic) {
-            return matic.quote.USD.price;
+        if (token) {
+            return token.quote.USD.price;
         } else {
-            console.log("Matic (Polygon) not found in response");
+            console.log(`${currency} not found in response`);
         }
     } catch (error) {
-        console.error("Error fetching Matic (Polygon) price from CoinMarketCap:", error);
+        console.error(`Error fetching Matic ${currency} price from CoinMarketCap:`, error);
     }
 }
 
@@ -126,17 +126,20 @@ program.command('claim')
 
                     // Find the option to pay with native tokens
                     const found = options[0]
-                    const gwei = found.value / 1e9;
-                    const polygonPriceInUSD = await fetchMaticPriceCoinMarketCap()
-                    
-                    // Convert gas price from Gwei to USD
-                    const gasPriceInUSD = gwei * polygonPriceInUSD / 1e9; // divide by 1e9 to convert Gwei to ETH
+
+                    const polygonPriceInUSD = await fetchPriceCoinMarketCap('MATIC')
+
+                    // Convert gas price from Gwei to ETH
+                    const computeValue = found.value / 1e18;
+
+                    // Convert that USD value to MATIC
+                    const maticValue = computeValue * polygonPriceInUSD;
 
                     const answers = await inquirer.prompt([
                         {
                             type: 'input',
                             name: 'userInput',
-                            message: chalk.greenBright(`Your tx will cost ~${(gwei.toFixed(2)).toString()} in gwei ($${gasPriceInUSD.toFixed(8)} USD), would you like to proceed y/n`),
+                            message: chalk.greenBright(`Your tx will cost ${(computeValue.toFixed(8)).toString()} in MATIC ($${maticValue.toFixed(8)} USD), would you like to proceed y/n`),
                         }
                     ]);
             
@@ -170,7 +173,7 @@ program.command('claim')
             const receipt = await provider.getTransactionReceipt(res.hash);
             const gasPrice = tx.gasPrice!;
 
-            const polygonPriceInUSD = await fetchMaticPriceCoinMarketCap()
+            const polygonPriceInUSD = await fetchPriceCoinMarketCap('MATIC')
                     
             const totalCostInWei = receipt.gasUsed;
             const gasPriceInUSD = Number(totalCostInWei) * polygonPriceInUSD / 1e9;

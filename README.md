@@ -3,16 +3,16 @@ a simple and slightly colorful CLI demo for interacting with the sequence relaye
 
 ## how to use
 ```
-$ pnpm run sequence:demo wallet
+$ pnpm sequence:demo wallet
 Your wallet address: <address>
 
-$ pnpm run sequence:demo claim
+$ pnpm sequence:demo claim
 ...
 
-$ pnpm run sequence:demo balance
+$ pnpm sequence:demo balance
 $DEMO balance: 32
 
-$ pnpm run sequence:demo send 8 <address>
+$ pnpm sequence:demo send 8 <address>
 ...
 ```
 
