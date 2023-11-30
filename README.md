@@ -14,5 +14,7 @@ $DEMO balance: 32
 
 $ pnpm sequence:demo send 8 <address>
 ...
-```
 
+$ pnpm sequence:demo purchase skyweaver <token_id> <max_price>
+...
+```
