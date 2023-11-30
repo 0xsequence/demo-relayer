@@ -276,6 +276,9 @@ program.command('purchase')
     .action((collection, token_id, price = 2, options) => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
             if(collection == 'skyweaver'){
+
+                let transactionBatch: any = []
+
                 const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
                 // Create your server EOA
@@ -304,45 +307,21 @@ program.command('purchase')
                     if(Number(ethers.utils.formatUnits(allowance, 6)) < price){
                         
                         console.log(chalk.blueBright(`info: sending transaction to approve contract`))
-                        const answers = await inquirer.prompt([
-                            {
-                                type: 'input',
-                                name: 'userInput',
-                                message: chalk.greenBright(`You are approving the sequence.market exchange contract to spend your USDC. Would you like to proceed y/n`),
-                            }
-                        ]);
-                
-                        // After getting user input, continue with the function
-                        if(answers.userInput == 'y'){
-                            const approveInterface = new ethers.utils.Interface([
-                                'function approve(address spender, uint256 amount) public returns(bool)'
-                            ])
-                
-                            const dataApprove = approveInterface.encodeFunctionData(
-                                'approve', [niftySwapContract, 100*1e6]
-                            )
-                
-                            const txApprove: any = {
-                                to: usdcEContract,
-                                data: dataApprove
-                            }
-                
-                            try {
-                                const res = await signer.sendTransaction(txApprove)
-                                console.log(chalk.blueBright(`Approve`))
-                                console.log('--------------------')
-                                console.log(`Approved 100 USDC`)
-                                console.log(`Transaction ID: ${res.hash}`)
-                                console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
-                            } catch(err) {
-                                console.log(`Something went wrong, check your inputs, or that you have enough USDC to complete the purchase`)
-                                console.log(err)
-                            }
-                        } else {
-                            console.log(chalk.red(`User denied tx.`))
-                            throw Error('User denied transaction')
+
+                        const approveInterface = new ethers.utils.Interface([
+                            'function approve(address spender, uint256 amount) public returns(bool)'
+                        ])
+            
+                        const dataApprove = approveInterface.encodeFunctionData(
+                            'approve', [niftySwapContract, ethers.constants.MaxUint256.toString()]
+                        )
+            
+                        const txApprove: any = {
+                            to: usdcEContract,
+                            data: dataApprove
                         }
-                    
+                        
+                        transactionBatch.push(txApprove)
                     };
 
                 } catch (error) {
@@ -370,8 +349,10 @@ program.command('purchase')
                     data
                 }
 
+                transactionBatch.push(txn)
+
                 try {
-                    const res = await signer.sendTransaction(txn)
+                    const res = await signer.sendTransaction(transactionBatch)
                     console.log(chalk.blueBright(`Skyweaver Card purchase`))
                     console.log('--------------------')
                     console.log(`Transaction ID: ${res.hash}`)
