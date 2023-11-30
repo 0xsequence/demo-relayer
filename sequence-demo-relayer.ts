@@ -304,7 +304,7 @@ program.command('purchase')
                 try {
                     const allowance = await tokenContract.allowance(await signer.getAddress(), niftySwapContract);
                     
-                    if(Number(ethers.utils.formatUnits(allowance, 6)) < price){
+                    if(Number(ethers.utils.formatUnits(allowance, 6)) < price) {
                         
                         console.log(chalk.blueBright(`info: sending transaction to approve contract`))
 
@@ -353,7 +353,7 @@ program.command('purchase')
 
                 try {
                     const res = await signer.sendTransaction(transactionBatch)
-                    console.log(chalk.blueBright(`Skyweaver Card purchase`))
+                    console.log(chalk.yellowBright(`Skyweaver Card purchase`))
                     console.log('--------------------')
                     console.log(`Transaction ID: ${res.hash}`)
                     console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
