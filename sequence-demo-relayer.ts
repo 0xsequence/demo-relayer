@@ -13,8 +13,10 @@ import { ChainId } from '@0xsequence/network'
 import { Command } from 'commander'
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { BigNumber, ethers } from 'ethers';
+import { BigNumber, ethers, utils } from 'ethers';
 import axios from 'axios'
+
+import Table from 'cli-table';
 
 const program = new Command();
 
@@ -78,6 +80,23 @@ const getOrderDeadline = (minutesFromNow = 30): number => {
     return nowInSeconds + offsetInSeconds
 }
 
+function addressToTimeRandomIndex(address: string, mod: number) {
+    const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+
+    const time = Date.now()
+    const hash = utils.solidityKeccak256(['address', 'uint'], [address, time])
+
+    let sum = 0;
+    
+    // Ensure the address is a string and iterate over each character
+    for (let i = 0; i < hash.length; i++) {
+        sum += hash.charCodeAt(i);
+    }
+
+    // Apply modulo 5 to the sum
+    return sum % mod;
+}
+
 program
     .name('sequence-demo-relayer')
     .description(chalk.blue('CLI to claim and send ERC20 tokens called $DEMO.\n\n _____                             \n|   __|___ ___ _ _ ___ ___ ___ ___ \n|__   | -_| . | | | -_|   |  _| -_|\n|_____|___|_  |___|___|_|_|___|___|\n            |_|\n '))
@@ -85,19 +104,14 @@ program
 
 program.command('wallet')
     .description('generate a wallet, if not created locally and print wallet address')
-    .action((str: any, options: any) => {
+    .action((intent: any, collection: any, options: any) => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
             const provider = new ethers.providers.JsonRpcProvider(providerUrl);
-
-            // Create your server EOA
             const walletEOA = new ethers.Wallet(privateKey, provider);
-
-            // Open a Sequence session, this will find or create
-            // a Sequence wallet controlled by your server EOA
             const session = await Session.singleSigner({
                 signer: walletEOA,
             })
-            
+
             const signer = session.account.getSigner(CHAIN_ID)
 
             console.log(chalk.blue(`Your wallet address: ${signer.account.address}`))
@@ -192,8 +206,9 @@ program.command('claim')
     });
 
 program.command('balance')
-    .description('get the user balance of $DEMO coin')
-    .action(async () => {
+    .description('get the user balances of $DEMO coin or skyweaver')
+    .argument('[collection]', 'the collection to show the balances of (e.g. skyweaver')
+    .action(async (collection: string) => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
             const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 
@@ -207,19 +222,46 @@ program.command('balance')
             })
             
             const signer = session.account.getSigner(CHAIN_ID)
-            const accountAddress = signer.account.address
 
-            const balance = await indexer.getTokenBalances({
-                contractAddress: contractAddress,
-                accountAddress: accountAddress,
-                includeMetadata: true
-            })
+            if(collection == 'skyweaver'){
+                // Open a Sequence session, this will find or create
+                // a Sequence wallet controlled by your server EOA
+                const balance = await indexer.getTokenBalances({
+                    contractAddress: '0x631998e91476da5b870d741192fc5cbc55f5a52e',
+                    accountAddress: signer.account.address,
+                    includeMetadata: true
+                })
 
-            balance.balances.map((token: any) => {
-                if(token.contractAddress == contractAddress){
-                    console.log(chalk.cyan(`$DEMO balance: ${token.balance}`))
-                }
-            })
+                var balanceTable = new Table({
+                    head: ['Token ID', 'Name', 'Balance']
+                    , colWidths: [10, 30, 10]
+                });
+
+                console.log('Skyweaver balances')
+
+                balance.balances.map((token: any) => {
+                    balanceTable.push(
+                        [token.tokenID, token.tokenMetadata.name, token.balance]
+                    );
+                })
+
+                console.log(balanceTable.toString())
+            } else if (collection == null){
+            
+                const accountAddress = signer.account.address
+
+                const balance = await indexer.getTokenBalances({
+                    contractAddress: contractAddress,
+                    accountAddress: accountAddress,
+                    includeMetadata: true
+                })
+
+                balance.balances.map((token: any) => {
+                    if(token.contractAddress == contractAddress){
+                        console.log(chalk.cyan(`$DEMO balance: ${token.balance}`))
+                    }
+                })
+            }
         })
     });
 
@@ -240,7 +282,7 @@ program.command('send')
                 signer: walletEOA,
             })
             
-            const signer = session.account.getSigner(CHAIN_ID   )
+            const signer = session.account.getSigner(CHAIN_ID)
 
             const erc20Interface = new ethers.utils.Interface([
                 'function transfer(address to, uint256 value) public returns (bool)'
@@ -268,12 +310,10 @@ program.command('send')
         });
 });
 
-program.command('purchase')
+program.command('purchase-collectible')
     .description('purchase skyweaver cards from sequence.market')
     .argument('<collection_name>', 'choose the colllection name (e.g. skyweaver')
-    .argument('<token_id>', 'a token id to purchase')
-    .argument('<max_price>', 'max price to pay for card')
-    .action((collection, token_id, price = 2, options) => {
+    .action((collection, options) => {
         generateOrLoadPrivateKey().then(async (privateKey) => {
             if(collection == 'skyweaver'){
 
@@ -304,7 +344,7 @@ program.command('purchase')
                 try {
                     const allowance = await tokenContract.allowance(await signer.getAddress(), niftySwapContract);
                     
-                    if(Number(ethers.utils.formatUnits(allowance, 6)) < price) {
+                    if(Number(ethers.utils.formatUnits(allowance, 6)) < 3) {
                         
                         console.log(chalk.blueBright(`info: sending transaction to approve contract`))
 
@@ -340,8 +380,12 @@ program.command('purchase')
                     )`
                 ])
 
+                // random token_id based on address + time
+                const token_id = addressToTimeRandomIndex(await signer.getAddress(), 5)
+                const token_set = ['65574','65596','65629','65642','135137']
+
                 const data = niftySwapInterface.encodeFunctionData(
-                    'buyTokens', [[token_id], [100], price*1e6, getOrderDeadline(), await signer.getAddress(), [], []]
+                    'buyTokens', [[token_set[token_id]], [100], 3*1e6, getOrderDeadline(), await signer.getAddress(), [], []]
                 )
                     
                 const txn = {
@@ -353,7 +397,7 @@ program.command('purchase')
 
                 try {
                     const res = await signer.sendTransaction(transactionBatch)
-                    console.log(chalk.yellowBright(`Skyweaver Card purchase`))
+                    console.log(chalk.yellowBright(`Skyweaver Card purchase tokenID: ${token_set[token_id]}`))
                     console.log('--------------------')
                     console.log(`Transaction ID: ${res.hash}`)
                     console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
