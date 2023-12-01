@@ -3,8 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "sequence:demo": "pnpm i && pnpm tsc && node sequence-demo-relayer.js",
-    "sequence:route": "pnpm i && pnpm tsc && node example-matching.js"
+    "sequence:demo": "pnpm i && pnpm tsc && node sequence-demo-relayer.js"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.3",
@@ -20,7 +19,7 @@
     "@0xsequence/relayer": "^1.2.9",
     "@openzeppelin/contracts": "^5.0.0",
     "@types/cli-table": "^0.3.4",
-    "axios": "^1.5.1",
+    "axios": "^1.6.2",
     "chalk": "4.1.2",
     "cli-table": "^0.3.11",
     "commander": "^11.1.0",

@@ -1,5 +1,5 @@
 # relayer-cli
-a simple and slightly colorful CLI demo for interacting with the sequence relayer in order to mint tokens, check balance, & send coin to friends.
+a simple and slightly colorful CLI demo for interacting with the sequence relayer in order to mint tokens, buy skyweaver cards, check balance, & send coin to friends.
 
 ## how to use
 ```
@@ -7,6 +7,9 @@ $ pnpm sequence:demo wallet
 Your wallet address: <address>
 
 $ pnpm sequence:demo claim
+...
+
+$ pnpm sequence:demo purchase-collectible skyweaver
 ...
 
 $ pnpm sequence:demo balance
@@ -20,8 +23,5 @@ $ pnpm sequence:demo balance skyweaver
 └──────────┴──────────────────────────────┴──────────┘
 
 $ pnpm sequence:demo send 8 <address>
-...
-
-$ pnpm sequence:demo purchase-collectible skyweaver
 ...
 ```
