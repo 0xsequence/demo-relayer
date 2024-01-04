@@ -23,7 +23,7 @@ const scanner = 'https://polygonscan.com'
 const CHAIN_ID = ChainId.POLYGON
 const API_KEY = 'bec3622f-3f4a-4f49-8f62-1bb0e16d0da6' // Replace with your API key, sh
 
-async function generateOrLoadPrivateKey() {
+async function getSigner(provider?: ethers.providers.Provider): Promise<ethers.Signer> {
   const envFilePath = path.join(__dirname, '.env')
 
   // Check if .env file exists
@@ -33,7 +33,7 @@ async function generateOrLoadPrivateKey() {
     // Check if pkey exists in .env
     if (process.env.pkey) {
       console.log('Private key already exists in .env file.')
-      return process.env.pkey
+      return new ethers.Wallet(process.env.pkey, provider)
     }
   }
 
@@ -45,7 +45,7 @@ async function generateOrLoadPrivateKey() {
   fs.appendFileSync(envFilePath, `pkey=${privateKey}\n`)
   console.log('Generated and saved a new private key to .env file.')
 
-  return privateKey
+  return new ethers.Wallet(privateKey, provider)
 }
 
 async function fetchPriceCoinMarketCap(currency: string) {
@@ -88,11 +88,10 @@ program
   .description('generate a wallet, if not created locally and print wallet address')
   .action(async () => {
     try {
-      const privateKey = await generateOrLoadPrivateKey()
       const provider = new ethers.providers.JsonRpcProvider(providerUrl)
 
       // Create your server EOA
-      const walletEOA = new ethers.Wallet(privateKey, provider)
+      const walletEOA = await getSigner(provider)
 
       // Open a Sequence session, this will find or create
       // a Sequence wallet controlled by your server EOA
@@ -113,11 +112,10 @@ program
   .description('claim some $DEMO token from the faucet')
   .action(async () => {
     try {
-      const privateKey = await generateOrLoadPrivateKey()
       const provider = new ethers.providers.JsonRpcProvider(providerUrl)
 
       // Create your server EOA
-      const walletEOA = new ethers.Wallet(privateKey, provider)
+      const walletEOA = await getSigner(provider)
 
       // Open a Sequence session, this will find or create
       // a Sequence wallet controlled by your server EOA
@@ -192,11 +190,10 @@ program
   .command('balance')
   .description('get the user balance of $DEMO coin')
   .action(async () => {
-    const privateKey = await generateOrLoadPrivateKey()
     const provider = new ethers.providers.JsonRpcProvider(providerUrl)
 
     // Create your server EOA
-    const walletEOA = new ethers.Wallet(privateKey, provider)
+    const walletEOA = await getSigner(provider)
 
     // Open a Sequence session, this will find or create
     // a Sequence wallet controlled by your server EOA
@@ -227,11 +224,10 @@ program
   .argument('<address>', 'wallet address to send to')
   .action(async (amount, address) => {
     try {
-      const privateKey = await generateOrLoadPrivateKey()
       const provider = new ethers.providers.JsonRpcProvider(providerUrl)
 
       // Create your server EOA
-      const walletEOA = new ethers.Wallet(privateKey, provider)
+      const walletEOA = await getSigner(provider)
 
       // Open a Sequence session, this will find or create
       // a Sequence wallet controlled by your server EOA
