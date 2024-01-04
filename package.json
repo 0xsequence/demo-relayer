@@ -7,7 +7,8 @@
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.3",
-    "@types/inquirer": "^9.0.6"
+    "@types/inquirer": "^9.0.6",
+    "eslint": "^8.56.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
