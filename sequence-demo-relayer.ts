@@ -86,115 +86,9 @@ program
 program
   .command('wallet')
   .description('generate a wallet, if not created locally and print wallet address')
-  .action(() => {
-    generateOrLoadPrivateKey()
-      .then(async privateKey => {
-        const provider = new ethers.providers.JsonRpcProvider(providerUrl)
-
-        // Create your server EOA
-        const walletEOA = new ethers.Wallet(privateKey, provider)
-
-        // Open a Sequence session, this will find or create
-        // a Sequence wallet controlled by your server EOA
-        const session = await Session.singleSigner({
-          signer: walletEOA
-        })
-
-        const signer = session.account.getSigner(CHAIN_ID)
-
-        console.log(chalk.blue(`Your wallet address: ${signer.account.address}`))
-      })
-      .catch(error => {
-        console.error(`Failed to generate or load private key: ${error}`)
-      })
-  })
-
-program
-  .command('claim')
-  .description('claim some $DEMO token from the faucet')
   .action(async () => {
-    generateOrLoadPrivateKey()
-      .then(async privateKey => {
-        const provider = new ethers.providers.JsonRpcProvider(providerUrl)
-
-        // Create your server EOA
-        const walletEOA = new ethers.Wallet(privateKey, provider)
-
-        // Open a Sequence session, this will find or create
-        // a Sequence wallet controlled by your server EOA
-        const session = await Session.singleSigner({
-          signer: walletEOA
-        })
-
-        const signer = session.account.getSigner(CHAIN_ID, {
-          // OPTIONAL: You can also enforce a specific way to pay for gas fees
-          // if not provided the sdk will select one for you
-          selectFee: async (_txs: any, options: any[]) => {
-            // Find the option to pay with native tokens
-            const found = options[0]
-
-            const polygonPriceInUSD = await fetchPriceCoinMarketCap('MATIC')
-
-            // Convert gas price from Gwei to ETH
-            const computeValue = found.value / 1e18
-
-            // Convert that USD value to MATIC
-            const maticValue = computeValue * polygonPriceInUSD
-
-            const answers = await inquirer.prompt([
-              {
-                type: 'input',
-                name: 'userInput',
-                message: chalk.greenBright(
-                  `Your tx will cost ${computeValue.toFixed(8).toString()} in MATIC ($${maticValue.toFixed(
-                    8
-                  )} USD), would you like to proceed y/n`
-                )
-              }
-            ])
-
-            // After getting user input, continue with the function
-            if (answers.userInput == 'y') {
-              return undefined
-            } else {
-              console.log(chalk.red(`User denied tx.`))
-              throw Error('User denied transaction')
-            }
-          }
-        })
-
-        const demoCoinInterface = new ethers.utils.Interface(['function mint()'])
-
-        const data = demoCoinInterface.encodeFunctionData('mint', [])
-
-        const txn = {
-          to: contractAddress,
-          data
-        }
-
-        const res = await signer.sendTransaction(txn, { simulateForFeeOptions: true })
-        console.log(`Transaction ID: ${res.hash}`)
-        console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
-        const receipt = await provider.getTransactionReceipt(res.hash)
-
-        const polygonPriceInUSD = await fetchPriceCoinMarketCap('MATIC')
-
-        const totalCostInWei = receipt.gasUsed
-        const gasPriceInUSD = (Number(totalCostInWei) * polygonPriceInUSD) / 1e9
-
-        console.log(chalk.blackBright(`gas used: ${totalCostInWei} wei ($${gasPriceInUSD.toFixed(8)} USD)`))
-        console.log(chalk.cyan(`8 $DEMO coin was transferred to ${signer.account.address}`))
-      })
-      .catch(error => {
-        console.error(error)
-      })
-  })
-
-program
-  .command('balance')
-  .description('get the user balance of $DEMO coin')
-  .action(async () => {
-    generateOrLoadPrivateKey().then(async privateKey => {
+    try {
+      const privateKey = await generateOrLoadPrivateKey()
       const provider = new ethers.providers.JsonRpcProvider(providerUrl)
 
       // Create your server EOA
@@ -207,19 +101,122 @@ program
       })
 
       const signer = session.account.getSigner(CHAIN_ID)
-      const accountAddress = signer.account.address
 
-      const balance = await indexer.getTokenBalances({
-        contractAddress: contractAddress,
-        accountAddress: accountAddress,
-        includeMetadata: true
+      console.log(chalk.blue(`Your wallet address: ${signer.account.address}`))
+    } catch (error) {
+      console.error(`Failed to generate or load private key: ${error}`)
+    }
+  })
+
+program
+  .command('claim')
+  .description('claim some $DEMO token from the faucet')
+  .action(async () => {
+    try {
+      const privateKey = await generateOrLoadPrivateKey()
+      const provider = new ethers.providers.JsonRpcProvider(providerUrl)
+
+      // Create your server EOA
+      const walletEOA = new ethers.Wallet(privateKey, provider)
+
+      // Open a Sequence session, this will find or create
+      // a Sequence wallet controlled by your server EOA
+      const session = await Session.singleSigner({
+        signer: walletEOA
       })
 
-      balance.balances.map((token: any) => {
-        if (token.contractAddress == contractAddress) {
-          console.log(chalk.cyan(`$DEMO balance: ${token.balance}`))
+      const signer = session.account.getSigner(CHAIN_ID, {
+        // OPTIONAL: You can also enforce a specific way to pay for gas fees
+        // if not provided the sdk will select one for you
+        selectFee: async (_txs: any, options: any[]) => {
+          // Find the option to pay with native tokens
+          const found = options[0]
+
+          const polygonPriceInUSD = await fetchPriceCoinMarketCap('MATIC')
+
+          // Convert gas price from Gwei to ETH
+          const computeValue = found.value / 1e18
+
+          // Convert that USD value to MATIC
+          const maticValue = computeValue * polygonPriceInUSD
+
+          const answers = await inquirer.prompt([
+            {
+              type: 'input',
+              name: 'userInput',
+              message: chalk.greenBright(
+                `Your tx will cost ${computeValue.toFixed(8).toString()} in MATIC ($${maticValue.toFixed(
+                  8
+                )} USD), would you like to proceed y/n`
+              )
+            }
+          ])
+
+          // After getting user input, continue with the function
+          if (answers.userInput == 'y') {
+            return undefined
+          } else {
+            console.log(chalk.red(`User denied tx.`))
+            throw Error('User denied transaction')
+          }
         }
       })
+
+      const demoCoinInterface = new ethers.utils.Interface(['function mint()'])
+
+      const data = demoCoinInterface.encodeFunctionData('mint', [])
+
+      const txn = {
+        to: contractAddress,
+        data
+      }
+
+      const res = await signer.sendTransaction(txn, { simulateForFeeOptions: true })
+      console.log(`Transaction ID: ${res.hash}`)
+      console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
+      const receipt = await provider.getTransactionReceipt(res.hash)
+
+      const polygonPriceInUSD = await fetchPriceCoinMarketCap('MATIC')
+
+      const totalCostInWei = receipt.gasUsed
+      const gasPriceInUSD = (Number(totalCostInWei) * polygonPriceInUSD) / 1e9
+
+      console.log(chalk.blackBright(`gas used: ${totalCostInWei} wei ($${gasPriceInUSD.toFixed(8)} USD)`))
+      console.log(chalk.cyan(`8 $DEMO coin was transferred to ${signer.account.address}`))
+    } catch (error) {
+      console.error(error)
+    }
+  })
+
+program
+  .command('balance')
+  .description('get the user balance of $DEMO coin')
+  .action(async () => {
+    const privateKey = await generateOrLoadPrivateKey()
+    const provider = new ethers.providers.JsonRpcProvider(providerUrl)
+
+    // Create your server EOA
+    const walletEOA = new ethers.Wallet(privateKey, provider)
+
+    // Open a Sequence session, this will find or create
+    // a Sequence wallet controlled by your server EOA
+    const session = await Session.singleSigner({
+      signer: walletEOA
+    })
+
+    const signer = session.account.getSigner(CHAIN_ID)
+    const accountAddress = signer.account.address
+
+    const balance = await indexer.getTokenBalances({
+      contractAddress: contractAddress,
+      accountAddress: accountAddress,
+      includeMetadata: true
+    })
+
+    balance.balances.map((token: any) => {
+      if (token.contractAddress == contractAddress) {
+        console.log(chalk.cyan(`$DEMO balance: ${token.balance}`))
+      }
     })
   })
 
@@ -228,43 +225,42 @@ program
   .description('send a certain number of tokens to a friends address')
   .argument('<amount>', 'amount to send')
   .argument('<address>', 'wallet address to send to')
-  .action((amount, address) => {
-    generateOrLoadPrivateKey()
-      .then(async privateKey => {
-        const provider = new ethers.providers.JsonRpcProvider(providerUrl)
+  .action(async (amount, address) => {
+    try {
+      const privateKey = await generateOrLoadPrivateKey()
+      const provider = new ethers.providers.JsonRpcProvider(providerUrl)
 
-        // Create your server EOA
-        const walletEOA = new ethers.Wallet(privateKey, provider)
+      // Create your server EOA
+      const walletEOA = new ethers.Wallet(privateKey, provider)
 
-        // Open a Sequence session, this will find or create
-        // a Sequence wallet controlled by your server EOA
-        const session = await Session.singleSigner({
-          signer: walletEOA
-        })
-
-        const signer = session.account.getSigner(CHAIN_ID)
-
-        const erc20Interface = new ethers.utils.Interface(['function transfer(address to, uint256 value) public returns (bool)'])
-
-        const data = erc20Interface.encodeFunctionData('transfer', [address, amount])
-
-        const txn = {
-          to: contractAddress,
-          data
-        }
-
-        try {
-          const res = await signer.sendTransaction(txn)
-          console.log(`Transaction ID: ${res.hash}`)
-          console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
-        } catch (err) {
-          console.log(`Something went wrong, check your inputs`)
-          console.log(err)
-        }
+      // Open a Sequence session, this will find or create
+      // a Sequence wallet controlled by your server EOA
+      const session = await Session.singleSigner({
+        signer: walletEOA
       })
-      .catch(error => {
-        console.error(`Failed to generate or load private key: ${error}`)
-      })
+
+      const signer = session.account.getSigner(CHAIN_ID)
+
+      const erc20Interface = new ethers.utils.Interface(['function transfer(address to, uint256 value) public returns (bool)'])
+
+      const data = erc20Interface.encodeFunctionData('transfer', [address, amount])
+
+      const txn = {
+        to: contractAddress,
+        data
+      }
+
+      try {
+        const res = await signer.sendTransaction(txn)
+        console.log(`Transaction ID: ${res.hash}`)
+        console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
+      } catch (err) {
+        console.log(`Something went wrong, check your inputs`)
+        console.log(err)
+      }
+    } catch (error) {
+      console.error(`Failed to generate or load private key: ${error}`)
+    }
   })
 
 program.parse()
