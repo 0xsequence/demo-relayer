@@ -1,14 +1,14 @@
 import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
 
-import { Session, SessionSettingsDefault } from '@0xsequence/auth'
+import { Session } from '@0xsequence/auth'
 import { SequenceIndexerClient } from '@0xsequence/indexer'
 import { ChainId } from '@0xsequence/network'
 import axios from 'axios'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import dotenv from 'dotenv'
-import { BigNumber, ethers } from 'ethers'
+import { ethers } from 'ethers'
 import fs from 'fs-extra'
 import inquirer from 'inquirer'
 
@@ -86,7 +86,7 @@ program
 program
   .command('wallet')
   .description('generate a wallet, if not created locally and print wallet address')
-  .action((str: any, options: any) => {
+  .action(() => {
     generateOrLoadPrivateKey()
       .then(async privateKey => {
         const provider = new ethers.providers.JsonRpcProvider(providerUrl)
@@ -112,7 +112,7 @@ program
 program
   .command('claim')
   .description('claim some $DEMO token from the faucet')
-  .action(async (str: any, options: any) => {
+  .action(async () => {
     generateOrLoadPrivateKey()
       .then(async privateKey => {
         const provider = new ethers.providers.JsonRpcProvider(providerUrl)
@@ -175,9 +175,7 @@ program
         const res = await signer.sendTransaction(txn, { simulateForFeeOptions: true })
         console.log(`Transaction ID: ${res.hash}`)
         console.log(`URL of Tx: ${scanner}/tx/${res.hash}`)
-        const tx = await provider.getTransaction(res.hash)
         const receipt = await provider.getTransactionReceipt(res.hash)
-        const gasPrice = tx.gasPrice!
 
         const polygonPriceInUSD = await fetchPriceCoinMarketCap('MATIC')
 
@@ -230,7 +228,7 @@ program
   .description('send a certain number of tokens to a friends address')
   .argument('<amount>', 'amount to send')
   .argument('<address>', 'wallet address to send to')
-  .action((amount, address, options) => {
+  .action((amount, address) => {
     generateOrLoadPrivateKey()
       .then(async privateKey => {
         const provider = new ethers.providers.JsonRpcProvider(providerUrl)
