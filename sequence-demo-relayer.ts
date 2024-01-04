@@ -2,6 +2,7 @@ import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 import { Session } from '@0xsequence/auth'
+import { GoogleKmsSigner } from '@0xsequence/google-kms-signer'
 import { SequenceIndexerClient } from '@0xsequence/indexer'
 import { ChainId } from '@0xsequence/network'
 import axios from 'axios'
@@ -23,12 +24,39 @@ const scanner = 'https://polygonscan.com'
 const CHAIN_ID = ChainId.POLYGON
 const API_KEY = 'bec3622f-3f4a-4f49-8f62-1bb0e16d0da6' // Replace with your API key, sh
 
+const GOOGLE_KMS_SETTINGS = [
+  'GOOGLE_KMS_PROJECT',
+  'GOOGLE_KMS_LOCATION',
+  'GOOGLE_KMS_KEY_RING',
+  'GOOGLE_KMS_CRYPTO_KEY',
+  'GOOGLE_KMS_CRYPTO_KEY_VERSION'
+]
+
 async function getSigner(provider?: ethers.providers.Provider): Promise<ethers.Signer> {
   const envFilePath = path.join(__dirname, '.env')
 
   // Check if .env file exists
   if (fs.existsSync(envFilePath)) {
     dotenv.config()
+
+    // Check if Google KMS settings exist
+    if (GOOGLE_KMS_SETTINGS.some(setting => process.env[setting])) {
+      if (!GOOGLE_KMS_SETTINGS.every(setting => process.env[setting])) {
+        console.warn(`To use a Google KMS key for signing, specify all options ${GOOGLE_KMS_SETTINGS.join(', ')}`)
+      } else {
+        return new GoogleKmsSigner(
+          {
+            project: process.env.GOOGLE_KMS_PROJECT!,
+            location: process.env.GOOGLE_KMS_LOCATION!,
+            keyRing: process.env.GOOGLE_KMS_KEY_RING!,
+            cryptoKey: process.env.GOOGLE_KMS_CRYPTO_KEY!,
+            cryptoKeyVersion: process.env.GOOGLE_KMS_CRYPTO_KEY_VERSION!
+          },
+          undefined,
+          provider
+        )
+      }
+    }
 
     // Check if pkey exists in .env
     if (process.env.pkey) {
