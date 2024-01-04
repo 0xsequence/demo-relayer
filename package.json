@@ -3,6 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
+    "lint": "eslint --config .eslintrc.cjs --fix \"**/*.ts\"",
     "sequence:demo": "pnpm i && pnpm tsc && node sequence-demo-relayer.js"
   },
   "devDependencies": {

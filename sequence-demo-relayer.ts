@@ -1,25 +1,22 @@
-import fs from 'fs-extra';
-import path from 'path';
-import dotenv from 'dotenv';
 
+import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+
+import { Session, SessionSettingsDefault } from '@0xsequence/auth'
+import { SequenceIndexerClient } from '@0xsequence/indexer'
+import { ChainId } from '@0xsequence/network'
+import axios from 'axios'
+import chalk from 'chalk';
+import { Command } from 'commander'
+import dotenv from 'dotenv';
+import { BigNumber, ethers } from 'ethers';
+import fs from 'fs-extra';
+import inquirer from 'inquirer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-import { Session, SessionSettingsDefault } from '@0xsequence/auth'
-import { ChainId } from '@0xsequence/network'
-import { Command } from 'commander'
-import inquirer from 'inquirer';
-import chalk from 'chalk';
-import { BigNumber, ethers } from 'ethers';
-import axios from 'axios'
-
 const program = new Command();
-
-import { SequenceIndexerClient } from '@0xsequence/indexer'
-
 const indexer = new SequenceIndexerClient('https://polygon-indexer.sequence.app')
 const contractAddress = '0x4574ca5b8b16d8e36d26c7e3dbeffe81f6f031f7'
 const providerUrl = 'https://nodes.sequence.app/polygon';
